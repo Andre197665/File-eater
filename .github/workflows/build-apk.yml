@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
 
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -38,6 +38,19 @@ jobs:
           test -n "$SETTINGS_FILE" || (echo "Could not find settings.gradle in the ZIP." && exit 1)
           PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Fix Java back navigation compile error
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("source/VoceDiClasseAndroid/app/src/main/java/it/vocediclasse/app/MainActivity.java")
+          s = p.read_text()
+          old = 'else if (webView != null && webView.evaluateJavascript("window.goBack && window.goBack()", null) == null) super.onBackPressed();'
+          new = 'else if (webView != null) { webView.evaluateJavascript("window.goBack && window.goBack()", null); } else super.onBackPressed();'
+          if old not in s:
+              raise SystemExit("Expected navigation line not found; stopping instead of changing the wrong code.")
+          p.write_text(s.replace(old, new))
+          print("Patched MainActivity.java")
 
       - name: Build debug APK
         run: gradle -p "$PROJECT_DIR" assembleDebug
