@@ -163,11 +163,11 @@ jobs:
           p = Path('source/VoceDiClasseAndroid/app/src/main/assets/index.html')
           s = p.read_text()
           pattern = r'nav\{[^}]*\}\s*nav button\{[^}]*\}nav \.on\{[^}]*\}'
-          new = 'nav{position:fixed;bottom:0;left:0;right:0;background:var(--g);border-top:1px solid var(--l);display:flex;overflow-x:auto;overscroll-behavior-x:contain;padding:4px 4px calc(4px + env(safe-area-inset-bottom));gap:2px}\\nnav button{flex:0 0 auto;min-width:56px;border:0;background:none;font-size:11px;line-height:1.2;color:var(--m);padding:8px 7px;white-space:nowrap}nav .on{color:var(--ink);font-weight:700;background:var(--hp);border-radius:var(--r)}'
+          new = 'nav{position:fixed;bottom:0;left:0;right:0;background:var(--g);border-top:1px solid var(--l);display:flex;justify-content:space-around;padding:4px 2px calc(4px + env(safe-area-inset-bottom));gap:0;overflow:hidden}\\nnav button{flex:1 1 0;min-width:0;width:0;border:0;background:none;font-size:10px;line-height:1.15;color:var(--m);padding:7px 1px;white-space:normal;overflow-wrap:anywhere}nav .on{color:var(--ink);font-weight:700;background:var(--hp);border-radius:var(--r)}'
           s, count = re.subn(pattern, lambda m: new, s, count=1)
           if count != 1: raise SystemExit('Could not safely locate navigation CSS')
           p.write_text(s)
-          print('Navigation now scrolls horizontally and uses smaller text')
+          print('Navigation restored to a fixed, non-scrollable bar with compact equal-width items')
           PY
       - name: Add image attachments to class notes
         run: |
