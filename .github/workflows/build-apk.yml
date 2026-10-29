@@ -45,7 +45,6 @@ jobs:
           from pathlib import Path
           p = Path("source/VoceDiClasseAndroid/app/src/main/java/it/vocediclasse/app/MainActivity.java")
           s = p.read_text()
-          start = s.indexOf if False else -1
           old = """    @Override public void onBackPressed() {
                   if (webView != null && webView.canGoBack()) webView.goBack();
                   else if (webView != null && webView.evaluateJavascript("window.goBack && window.goBack()", null) == null) super.onBackPressed();
@@ -66,12 +65,47 @@ jobs:
           print("Patched onBackPressed method")
           PY
 
+      - name: Give this build a separate app identity
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path("source")
+          gradle_files = list(root.glob("**/app/build.gradle")) + list(root.glob("**/app/build.gradle.kts"))
+          if not gradle_files:
+              raise SystemExit("Could not find app/build.gradle(.kts)")
+          changed = False
+          for p in gradle_files:
+              s = p.read_text()
+              pattern = r'(applicationId\s*[(" ]+)([A-Za-z][A-Za-z0-9_.]*)([") ]*)'
+              m = re.search(pattern, s)
+              if m:
+                  old_id = m.group(2)
+                  new_id = old_id if old_id.endswith(".nuova") else old_id + ".nuova"
+                  s = s[:m.start(2)] + new_id + s[m.end(2):]
+                  p.write_text(s)
+                  print(f"Application ID changed: {old_id} -> {new_id}")
+                  changed = True
+                  break
+          if not changed:
+              raise SystemExit("Could not safely locate applicationId; stopping instead of building an unchanged app.")
+          strings_files = list(root.glob("**/app/src/main/res/values/strings.xml"))
+          for p in strings_files:
+              s = p.read_text()
+              updated, n = re.subn(r'(<string\s+name=["\']app_name["\']\s*>).*?(</string>)',
+                                   r'\1Voce di Classe Nuova\2', s, count=1, flags=re.S)
+              if n:
+                  p.write_text(updated)
+                  print("App display name changed to Voce di Classe Nuova")
+                  break
+          PY
+
       - name: Build debug APK
         run: gradle -p "$PROJECT_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: voce-di-classe-debug-apk
+          name: voce-di-classe-nuova-debug-apk
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
