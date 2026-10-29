@@ -45,12 +45,26 @@ jobs:
           from pathlib import Path
           p = Path("source/VoceDiClasseAndroid/app/src/main/java/it/vocediclasse/app/MainActivity.java")
           s = p.read_text()
-          old = 'else if (webView != null && webView.evaluateJavascript("window.goBack && window.goBack()", null) == null) super.onBackPressed();'
-          new = 'else if (webView != null) { webView.evaluateJavascript("window.goBack && window.goBack()", null); } else super.onBackPressed();'
+          start = s.indexOf if False else -1
+          old = """    @Override public void onBackPressed() {
+                  if (webView != null && webView.canGoBack()) webView.goBack();
+                  else if (webView != null && webView.evaluateJavascript("window.goBack && window.goBack()", null) == null) super.onBackPressed();
+                  else super.onBackPressed();
+              }"""
+          new = """    @Override public void onBackPressed() {
+                  if (webView != null && webView.canGoBack()) {
+                      webView.goBack();
+                  } else if (webView != null) {
+                      webView.evaluateJavascript("if (window.goBack) window.goBack(); else history.back();", null);
+                  } else {
+                      super.onBackPressed();
+                  }
+              }"""
           if old not in s:
-              raise SystemExit("Expected navigation line not found; stopping instead of changing the wrong code.")
+              raise SystemExit("Expected onBackPressed method not found; stopping safely.")
           p.write_text(s.replace(old, new))
-          print("Patched MainActivity.java")
+          print("Patched onBackPressed method")
+          PY
 
       - name: Build debug APK
         run: gradle -p "$PROJECT_DIR" assembleDebug
