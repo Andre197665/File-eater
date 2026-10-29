@@ -105,6 +105,35 @@ jobs:
           p.write_text(s.replace(old, new, 1))
           print('Navigation now scrolls horizontally and uses smaller text')
           PY
+      - name: Add image attachments to class notes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('source/VoceDiClasseAndroid/app/src/main/assets/index.html')
+          s = p.read_text()
+          old = "const newNote=()=>form('Condividi appunti',[['subject','Materia','text','required'],['t','Titolo','text','required'],['topic','Cosa spiegano?','text','required'],['body','Appunti (puoi incollare il testo)','area','required']],v=>{S.notes=S.notes||[];S.notes.push({id:id(),subject:v.subject,t:v.t,topic:v.topic,body:v.body,by:S.me,d:today()});notifyClass('Nuovi appunti','È stato condiviso un nuovo appunto dalla classe')},'Condividi');"
+          new = """const newNote=()=>{
+          const o=document.createElement('div');o.className='ov';
+          o.innerHTML='<form><h2>Condividi appunti</h2><label>Materia</label><input name=\"subject\" required><label>Titolo</label><input name=\"t\" required><label>Cosa spiegano?</label><input name=\"topic\" required><label>Appunti (puoi incollare il testo)</label><textarea name=\"body\" rows=\"3\" placeholder=\"Scrivi o incolla gli appunti\"></textarea><label>Aggiungi una foto o immagine (PNG, JPG ecc.)</label><input name=\"image\" type=\"file\" accept=\"image/*\"><img id=\"notePreview\" alt=\"Anteprima\" style=\"display:none;max-width:100%;max-height:180px;object-fit:contain;margin:4px 0 10px\"><div class=\"row\"><button type=\"button\" class=\"sp\" id=\"cx\">Annulla</button><button class=\"sp p\">Condividi</button></div></form>';
+          document.body.append(o);const f=o.querySelector('form'),file=f.elements.image,preview=o.querySelector('#notePreview');
+          file.onchange=()=>{const selected=file.files&&file.files[0];if(!selected){preview.style.display='none';return}if(!selected.type.startsWith('image/')){alert('Scegli un file immagine PNG o JPG.');file.value='';return}preview.src=URL.createObjectURL(selected);preview.style.display='block'};
+          o.querySelector('#cx').onclick=()=>o.remove();
+          f.onsubmit=async e=>{e.preventDefault();const subject=f.elements.subject.value.trim(),t=f.elements.t.value.trim(),topic=f.elements.topic.value.trim(),body=f.elements.body.value.trim(),selected=file.files&&file.files[0];if(!subject||!t||!topic){alert('Compila materia, titolo e argomento.');return}if(!body&&!selected){alert('Scrivi gli appunti o scegli un’immagine.');return}
+          const button=f.querySelector('.p');button.disabled=true;button.textContent='Preparo…';
+          try{let image='';if(selected){image=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Impossibile leggere l’immagine'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('Immagine non valida'));img.onload=()=>{const max=1000,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.65))};img.src=reader.result};reader.readAsDataURL(selected)})}
+          S.notes=S.notes||[];S.notes.push({id:id(),subject,t,topic,body,image,by:S.me,d:today()});notifyClass('Nuovi appunti','È stato condiviso un nuovo appunto dalla classe');o.remove();save();draw()
+          }catch(err){alert(err.message||'Errore nel preparare l’immagine');button.disabled=false;button.textContent='Condividi'}
+          };
+          };"""
+          if old not in s: raise SystemExit('newNote function not found')
+          s=s.replace(old,new,1)
+          old_render = 'E(n.body)}</p><div class=\"row m\" style=\"margin-top:10px\">'
+          new_render = 'E(n.body||\'\')}</p>${n.image ? \'<img src=\"\'+E(n.image)+\'\" alt=\"Immagine degli appunti\" loading=\"lazy\" style=\"display:block;max-width:100%;max-height:520px;object-fit:contain;margin-top:10px;border-radius:6px\">\' : \'\'}<div class=\"row m\" style=\"margin-top:10px\">'
+          if old_render not in s: raise SystemExit('notes display template not found')
+          s=s.replace(old_render,new_render,1)
+          p.write_text(s)
+          print('Image attachments enabled for class notes')
+          PY
       - name: Build debug APK
         run: gradle -p "$PROJECT_DIR" assembleDebug
       - name: Upload APK
