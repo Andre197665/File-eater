@@ -1,0 +1,49 @@
+name: Build Voce di Classe APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'VoceDiClasseAndroid-Appunti.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Android project
+        run: |
+          test -f VoceDiClasseAndroid-Appunti.zip || (echo "Upload VoceDiClasseAndroid-Appunti.zip to the repository root first." && exit 1)
+          mkdir source
+          unzip -q VoceDiClasseAndroid-Appunti.zip -d source
+          find source -name settings.gradle -o -name settings.gradle.kts
+          PROJECT_DIR="$(dirname "$(find source -name settings.gradle -o -name settings.gradle.kts | head -n 1)")"
+          test -n "$PROJECT_DIR" || (echo "Could not find settings.gradle in the ZIP." && exit 1)
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: gradle -p "$PROJECT_DIR" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voce-di-classe-debug-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
