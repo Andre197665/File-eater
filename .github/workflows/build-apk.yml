@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'VoceDiClasseAndroid-Appunti.zip'
+      - '.github/workflows/VoceDiClasseAndroid-Appunti.zip'
+      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
@@ -29,9 +30,10 @@ jobs:
 
       - name: Extract Android project
         run: |
-          test -f VoceDiClasseAndroid-Appunti.zip || (echo "Upload VoceDiClasseAndroid-Appunti.zip to the repository root first." && exit 1)
+          ZIP_FILE=".github/workflows/VoceDiClasseAndroid-Appunti.zip"
+          test -f "$ZIP_FILE" || (echo "ZIP file not found at $ZIP_FILE" && exit 1)
           mkdir source
-          unzip -q VoceDiClasseAndroid-Appunti.zip -d source
+          unzip -q "$ZIP_FILE" -d source
           SETTINGS_FILE="$(find source -name settings.gradle -o -name settings.gradle.kts | head -n 1)"
           test -n "$SETTINGS_FILE" || (echo "Could not find settings.gradle in the ZIP." && exit 1)
           PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
